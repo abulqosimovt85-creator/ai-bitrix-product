@@ -1,0 +1,21 @@
+{
+  "name": "labtec-product-ai",
+  "version": "1.0.0",
+  "description": "Creates Bitrix24 catalog products from supplier PDFs, web pages, text or photos using an AI model",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --env-file-if-exists=.env server.js",
+    "mock-bitrix": "node dev/mock-bitrix.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1"
+  }
+}

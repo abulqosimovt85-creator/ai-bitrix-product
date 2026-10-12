@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход — LAB-TEC Товары</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="login-page">
+  <form class="card login" method="post" action="/login">
+    <h1>LAB-TEC · Товары из документов</h1>
+    <p class="muted">Введите пароль, чтобы продолжить</p>
+    <p id="err" class="error" hidden></p>
+    <input type="password" name="password" placeholder="Пароль" autofocus required autocomplete="current-password">
+    <button type="submit" class="primary">Войти</button>
+  </form>
+  <script>
+    const e = new URLSearchParams(location.search).get('e');
+    if (e) {
+      const el = document.getElementById('err');
+      el.textContent = e === 'locked' ? 'Слишком много попыток. Попробуйте через 15 минут.' : 'Неверный пароль';
+      el.hidden = false;
+    }
+  </script>
+</body>
+</html>

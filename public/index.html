@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LAB-TEC · Товары из документов</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">LAB-TEC <span>· создание товаров в Bitrix24</span></div>
+    <form method="post" action="/logout"><button class="link">Выйти</button></form>
+  </header>
+
+  <main>
+    <!-- Step 1: source -->
+    <section class="card" id="step1">
+      <h2>1. Материалы о товаре</h2>
+      <p class="muted">Добавьте одно или несколько: PDF поставщика, ссылку на страницу товара, текст или фото/скриншот.</p>
+
+      <label class="drop" id="drop">
+        <input type="file" id="files" multiple accept=".pdf,.txt,image/png,image/jpeg,image/webp">
+        <span>Перетащите файлы сюда или <u>выберите</u></span>
+        <small>PDF, JPG, PNG, WEBP, TXT · до 15 МБ каждый</small>
+      </label>
+      <ul id="fileList" class="files"></ul>
+
+      <label class="field">Ссылка на страницу товара
+        <input type="url" id="url" placeholder="https://...">
+      </label>
+      <label class="field">Текст (характеристики из письма, Telegram, Excel…)
+        <textarea id="text" rows="5" placeholder="Вставьте текст"></textarea>
+      </label>
+
+      <p id="err1" class="error" hidden></p>
+      <button class="primary" id="extractBtn">Распознать с помощью ИИ</button>
+    </section>
+
+    <!-- Step 2: review -->
+    <section class="card" id="step2" hidden>
+      <h2>2. Проверьте и исправьте</h2>
+      <p id="notes" class="warn" hidden></p>
+      <p id="dupes" class="warn" hidden></p>
+
+      <div class="grid">
+        <label class="field wide">Название *
+          <input id="name" required>
+        </label>
+        <label class="field wide">Описание (печатается в КП под названием)
+          <textarea id="description" rows="12"></textarea>
+        </label>
+        <label class="field">Цена
+          <input id="price" type="number" step="0.01" min="0">
+        </label>
+        <label class="field">Валюта
+          <select id="currency"></select>
+        </label>
+        <label class="field">НДС
+          <select id="vat"></select>
+        </label>
+        <label class="field">Единица измерения
+          <select id="measure"></select>
+        </label>
+        <label class="field wide">Раздел каталога
+          <select id="section"><option value="">— без раздела —</option></select>
+        </label>
+      </div>
+
+      <h3>Свойства</h3>
+      <div class="grid" id="props"></div>
+
+      <h3>Фото товара</h3>
+      <div class="photos" id="photos"></div>
+      <label class="field">Или загрузите своё фото
+        <input type="file" id="photoFile" accept="image/png,image/jpeg,image/webp">
+      </label>
+
+      <p id="err2" class="error" hidden></p>
+      <div class="actions">
+        <button id="backBtn">← Назад</button>
+        <button class="primary" id="createBtn">Создать товар в Bitrix24</button>
+      </div>
+    </section>
+
+    <!-- Step 3: done -->
+    <section class="card" id="step3" hidden>
+      <h2>Товар создан ✓</h2>
+      <p><a id="productLink" target="_blank" rel="noopener">Открыть товар в Bitrix24</a></p>
+      <button class="primary" id="againBtn">Создать ещё один товар</button>
+    </section>
+  </main>
+
+  <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busyText">Обработка…</p></div>
+  <script src="/app.js"></script>
+</body>
+</html>

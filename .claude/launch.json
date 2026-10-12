@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mock-bitrix",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dev/mock-bitrix.js"],
+      "port": 4000
+    },
+    {
+      "name": "app-test",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=dev/test.env", "server.js"],
+      "port": 3000
+    }
+  ]
+}
