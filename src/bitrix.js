@@ -4,12 +4,17 @@ const config = require('./config');
 async function call(method, params = {}) {
   if (!config.bitrixWebhook) throw new Error('BITRIX_WEBHOOK_URL не настроен');
   const url = config.bitrixWebhook.replace(/\/?$/, '/') + method + '.json';
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-    signal: AbortSignal.timeout(60_000),
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (err) {
+    throw new Error(`Не удалось связаться с Bitrix24 (${err.cause?.code || err.name || err.message}). Проверьте BITRIX_WEBHOOK_URL.`);
+  }
   const data = await res.json().catch(() => null);
   if (!data) throw new Error(`Bitrix24 ${method}: HTTP ${res.status}`);
   if (data.error) throw new Error(`Bitrix24 ${method}: ${data.error_description || data.error}`);

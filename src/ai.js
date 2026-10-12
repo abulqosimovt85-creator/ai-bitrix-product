@@ -84,12 +84,19 @@ async function draftFromSource(source, meta) {
   };
   if (config.ai.jsonMode) body.response_format = { type: 'json_object' };
 
-  const res = await fetch(baseUrl + '/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
-  });
+  let res;
+  try {
+    res = await fetch(baseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
+    });
+  } catch (err) {
+    const code = err.cause?.code || err.name || err.message;
+    if (code === 'TimeoutError') throw new Error('ИИ не ответил за 2 минуты. Попробуйте ещё раз или сократите материалы.');
+    throw new Error(`Не удалось связаться с ИИ (${code}). Проверьте AI_BASE_URL.`);
+  }
   const data = await res.json().catch(() => null);
   if (!res.ok || !data) {
     const msg = data?.error?.message || data?.message || `HTTP ${res.status}`;

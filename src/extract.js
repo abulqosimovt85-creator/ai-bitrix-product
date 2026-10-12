@@ -29,15 +29,32 @@ async function assertPublicUrl(raw) {
   return u;
 }
 
+const CERT_ERRORS = /CERT|SELF_SIGNED|UNABLE_TO_VERIFY/;
+
 async function safeFetch(raw, accept) {
   let url = raw;
-  for (let i = 0; i < 4; i++) {
+  const badCertHosts = new Set();
+  for (let i = 0; i < 5; i++) {
     const u = await assertPublicUrl(url);
-    const res = await fetch(u, {
-      redirect: 'manual',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LabtecProductAI/1.0)', Accept: accept },
-      signal: AbortSignal.timeout(20_000),
-    });
+    let res;
+    try {
+      res = await fetch(u, {
+        redirect: 'manual',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LabtecProductAI/1.0)', Accept: accept },
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch (err) {
+      const code = err.cause?.code || err.name || '';
+      // Supplier sites often have a broken HTTPS certificate: read the public page over http instead
+      if (u.protocol === 'https:' && CERT_ERRORS.test(code) && !badCertHosts.has(u.hostname)) {
+        badCertHosts.add(u.hostname);
+        url = 'http://' + u.host + u.pathname + u.search;
+        continue;
+      }
+      if (CERT_ERRORS.test(code)) throw new Error(`У сайта ${u.hostname} неисправный сертификат безопасности. Скопируйте текст страницы или загрузите PDF/скриншот.`);
+      if (code === 'TimeoutError' || code === 'UND_ERR_CONNECT_TIMEOUT') throw new Error(`Сайт ${u.hostname} не ответил вовремя. Скопируйте текст страницы или загрузите PDF/скриншот.`);
+      throw new Error(`Не удалось открыть сайт ${u.hostname} (${code || err.message}). Скопируйте текст страницы или загрузите PDF/скриншот.`);
+    }
     if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
       url = new URL(res.headers.get('location'), u).toString();
       continue;
