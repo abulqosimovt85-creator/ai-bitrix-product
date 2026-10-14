@@ -6,6 +6,7 @@ const auth = require('./src/auth');
 const bitrix = require('./src/bitrix');
 const { buildSource, downloadImage } = require('./src/extract');
 const { draftFromSource } = require('./src/ai');
+const { verifyProduct } = require('./src/verify');
 
 const app = express();
 app.set('trust proxy', 1); // Railway terminates HTTPS in front of the app
@@ -68,17 +69,13 @@ app.get('/api/meta', asyncRoute(async (req, res) => {
   });
 }));
 
-// Reads the source material and returns a draft for the review form
-app.post('/api/extract', upload.array('files', 6), asyncRoute(async (req, res) => {
-  const source = await buildSource({ files: req.files || [], url: (req.body.url || '').trim(), text: req.body.text || '' });
-  const meta = await bitrix.getMeta();
-  const ai = await draftFromSource(source, meta);
+const norm = s => String(s || '').trim().toLowerCase();
 
-  // map names returned by the AI onto Bitrix24 ids
-  const norm = s => String(s || '').trim().toLowerCase();
+// AI product -> review-form draft with Bitrix24 ids
+function toDraft(p, meta) {
   const properties = {};
-  for (const [name, value] of Object.entries(ai.properties || {})) {
-    const prop = meta.properties.find(p => norm(p.name) === norm(name));
+  for (const [name, value] of Object.entries(p.properties || {})) {
+    const prop = meta.properties.find(x => norm(x.name) === norm(name));
     if (!prop || prop.type === 'F' || value === null || value === '') continue;
     if (prop.type === 'L') {
       const opt = prop.values.find(v => norm(v.value) === norm(value));
@@ -87,28 +84,39 @@ app.post('/api/extract', upload.array('files', 6), asyncRoute(async (req, res) =
       properties[prop.id] = String(value);
     }
   }
-  const measure = meta.measures.find(m => norm(m.name).replace(/\.$/, '') === norm(ai.measure).replace(/\.$/, '')) ||
+  const measure = meta.measures.find(m => norm(m.name).replace(/\.$/, '') === norm(p.measure).replace(/\.$/, '')) ||
     meta.measures.find(m => m.code === '796') || meta.measures.find(m => m.isDefault);
-  const currency = meta.currencies.includes(String(ai.currency || '').toUpperCase()) ? String(ai.currency).toUpperCase() : config.defaultCurrency;
+  const currency = meta.currencies.includes(String(p.currency || '').toUpperCase()) ? String(p.currency).toUpperCase() : config.defaultCurrency;
   const vat = meta.vats.find(v => v.rate === config.defaultVatRate);
+  return {
+    name: p.name || '',
+    description: p.description || '',
+    price: parsePrice(p.price),
+    currencyId: currency,
+    vatId: vat ? vat.id : '',
+    measureId: measure ? measure.id : '',
+    sectionId: '',
+    properties,
+  };
+}
+
+// Reads the source material and returns one draft per product found
+app.post('/api/extract', upload.array('files', 6), asyncRoute(async (req, res) => {
+  const source = await buildSource({ files: req.files || [], url: (req.body.url || '').trim(), text: req.body.text || '' });
+  const meta = await bitrix.getMeta();
+  const ai = await draftFromSource(source, meta);
+
+  const items = ai.products.map(p => {
+    const warnings = verifyProduct(p, source.text, meta); // removes values that are not in the source
+    return { draft: toDraft(p, meta), notes: p.notes || '', warnings, photoUrls: p.image_urls };
+  });
 
   res.json({
-    draft: {
-      name: ai.name || '',
-      description: ai.description || '',
-      price: parsePrice(ai.price),
-      currencyId: currency,
-      vatId: vat ? vat.id : '',
-      measureId: measure ? measure.id : '',
-      sectionId: '',
-      properties,
-    },
-    notes: ai.notes || '',
-    photos: [
-      ...source.images.map(i => ({ kind: 'upload', src: i.dataUrl, label: i.name })),
-      ...ai.image_urls.map(u => ({ kind: 'url', src: u, label: 'с сайта' })),
-      ...source.imageUrls.filter(i => !ai.image_urls.includes(i.url)).slice(0, 8).map(i => ({ kind: 'url', src: i.url, label: i.alt || 'с сайта' })),
-    ],
+    items,
+    notes: ai.notes,
+    truncated: source.truncated,
+    uploads: source.images.map(i => ({ kind: 'upload', src: i.dataUrl, label: i.name })),
+    pagePhotos: source.imageUrls.slice(0, 12).map(i => ({ kind: 'url', src: i.url, label: i.alt || 'с сайта' })),
   });
 }));
 

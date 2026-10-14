@@ -4,7 +4,7 @@ const net = require('net');
 const cheerio = require('cheerio');
 const pdfParse = require('pdf-parse/lib/pdf-parse.js'); // direct path avoids pdf-parse's debug self-test
 
-const MAX_TEXT = 40_000;
+const config = require('./config');
 const MAX_DOWNLOAD = 8 * 1024 * 1024;
 
 function isPrivateIp(ip) {
@@ -126,9 +126,10 @@ async function buildSource({ files = [], url = '', text = '' }) {
   if (text && text.trim()) parts.push(`=== Текст от пользователя ===\n${text.trim()}`);
 
   let joined = parts.join('\n\n');
-  if (joined.length > MAX_TEXT) joined = joined.slice(0, MAX_TEXT) + '\n[...текст обрезан...]';
+  const truncated = joined.length > config.maxSourceChars;
+  if (truncated) joined = joined.slice(0, config.maxSourceChars) + '\n[...текст обрезан...]';
   if (!joined && !images.length) throw new Error('Добавьте файл, ссылку или текст о товаре');
-  return { text: joined, images, imageUrls };
+  return { text: joined, images, imageUrls, truncated };
 }
 
 // Downloads a chosen product photo (from the page) for upload to Bitrix24

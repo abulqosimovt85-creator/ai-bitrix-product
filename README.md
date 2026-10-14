@@ -4,9 +4,15 @@ Web app that creates products in the Bitrix24 catalog from supplier material:
 PDF / datasheet, product web page link, pasted text, or photo / screenshot.
 
 1. A salesperson adds the material and clicks **Распознать с помощью ИИ**.
-2. The AI model writes the Russian description in the CO style (name line, `Модель: …`, specs line by line,
+2. The AI model finds every product in the material (up to 20, e.g. all models in a brochure) and for each
+   writes the Russian description in the CO style (name line, `Модель: …`, specs line by line,
    `Комплектация:` with `•` items) and fills price, currency, unit and the catalog's custom properties.
-3. The salesperson checks/edits everything, picks the photo, and clicks **Создать товар в Bitrix24**.
+3. **Grounding check** (`src/verify.js`): every number and model code the AI wrote must also appear in the
+   source. Description lines, properties or prices that are not in the source are removed and listed on the
+   product card, so nothing made up reaches the catalog. (Photo-only sources cannot be checked automatically —
+   the card says so.)
+4. The salesperson checks/edits each product card, picks photos, ticks the products to create and clicks
+   **Создать выбранные**. Each product is created separately; failures can be fixed and retried.
 
 The photo is saved to the product pictures **and** to the `MORE_PHOTO` property, which the
 commercial-offer template prints in the «Примечания» column.
@@ -26,6 +32,8 @@ so new properties added in Bitrix24 appear automatically.
 | `AI_MODEL` | yes | Model name. Use a model that can read images if you want photo/screenshot input |
 | `AI_JSON_MODE` | no | `true` (default). Set `false` if the provider rejects `response_format` |
 | `AI_VISION` | no | `true` (default). Set `false` if the model cannot read images |
+| `AI_MAX_TOKENS` | no | Max answer length; raise it (e.g. `8000`) if brochures with many products come back cut off |
+| `MAX_SOURCE_CHARS` | no | How much source text is sent to the AI, default `40000`; lower it for providers with small limits |
 | `DEFAULT_VAT_RATE` | no | Default VAT for new products, `12` |
 | `DEFAULT_CURRENCY` | no | Used when the source has no currency, `UZS` |
 

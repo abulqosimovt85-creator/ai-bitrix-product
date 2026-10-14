@@ -12,7 +12,9 @@ module.exports = {
     jsonMode: bool(process.env.AI_JSON_MODE, true),
     vision: bool(process.env.AI_VISION, true),
     mock: bool(process.env.MOCK_AI, false),
+    maxTokens: Number(process.env.AI_MAX_TOKENS) || 0, // 0 = provider default
   },
+  maxSourceChars: Number(process.env.MAX_SOURCE_CHARS) || 40_000,
   defaultVatRate: Number(process.env.DEFAULT_VAT_RATE || 12),
   defaultCurrency: process.env.DEFAULT_CURRENCY || 'UZS',
 };
