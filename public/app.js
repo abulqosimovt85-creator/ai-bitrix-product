@@ -53,19 +53,56 @@ $('extractBtn').addEventListener('click', async () => {
   files.forEach(f => fd.append('files', f));
   fd.append('url', url);
   fd.append('text', text);
-  busy(true, 'ИИ читает материалы… (до 1–3 минут)');
+  askNotifyPermission();
+  busy(true, 'ИИ читает материалы… (до 1–3 минут). Можно переключиться на другую вкладку — мы сообщим, когда будет готово.');
   try {
     if (!meta) meta = await api('/api/meta');
     const result = await api('/api/extract', { method: 'POST', body: fd });
     loadItems(result);
     show('step2');
     items.forEach((_, i) => checkDuplicates(i));
+    const n = result.items.length;
+    notifyDone('Готово: ' + (n === 1 ? 'найден 1 товар' : `найдено товаров: ${n}`), 'Проверьте карточки и создайте товары в Bitrix24.');
   } catch (err) {
     showError('err1', err.message);
+    notifyDone('Распознавание не удалось', err.message, true);
   } finally {
     busy(false);
   }
 });
+
+// ---------- "done" notification: system pop-up + sound + tab title ----------
+const baseTitle = document.title;
+function askNotifyPermission() {
+  // must be called from a click; the browser asks only once
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+}
+function beep(failed) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const tones = failed ? [440, 330] : [660, 880];
+    tones.forEach((f, k) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.15, ctx.currentTime + k * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + k * 0.18 + 0.16);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + k * 0.18);
+      o.stop(ctx.currentTime + k * 0.18 + 0.17);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch { /* sound is optional */ }
+}
+function notifyDone(title, body, failed = false) {
+  beep(failed);
+  if (!document.hidden) return;
+  document.title = (failed ? '✗ ' : '✓ ') + title + ' — ' + baseTitle;
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const n = new Notification(title, { body, tag: 'labtec-extract' });
+    n.onclick = () => { window.focus(); n.close(); };
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = baseTitle; });
 
 // ---------- step 2 ----------
 function loadItems(result) {
